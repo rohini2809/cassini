@@ -11,10 +11,11 @@ import json
 from shapely.geometry import shape, Polygon
 import time
 import os
-ORS_API_KEY = os.getenv("ORS_API_KEY")
 from PIL import Image, ImageFile
 import numpy as np
 from shapely.geometry import mapping
+
+ORS_API_KEY = os.getenv("ORS_API_KEY")
 
 # === CONFIG ===
 ImageFile.LOAD_TRUNCATED_IMAGES = True
