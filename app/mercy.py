@@ -20,28 +20,30 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
 
 # Paths for Triage Dashboard
-CSV_PATH = r"C:\Users\Rohini Parthasarathy\Desktop\ai_resuce_platform\data\hospital.csv"
-ORS_API_KEY = "5b3ce3597851110001cf62482769c93c1a9e42e5a3c52922d8885197"
-SHAKEMAP_PATH = r"C:\Users\Rohini Parthasarathy\Desktop\ai_resuce_platform\data\intensity_contours.json"
-MAG_CSV_PATH = r"C:\Users\Rohini Parthasarathy\Desktop\ai_resuce_platform\data\magnitude.csv"
-ELDERLY_CSV_PATH = r"C:\Users\Rohini Parthasarathy\Desktop\ai_resuce_platform\data\elderly_population.csv"
+CSV_PATH = "data/hospital.csv"
+SHAKEMAP_PATH = "data/intensity_contours.json"
+MAG_CSV_PATH = "data/magnitude.csv"
+ELDERLY_CSV_PATH = "data/elderly_population.csv"
+GEOJSON_PATH = "data/damaged_roads.geojson"
+
 SENTINEL_IMAGES = {
-    r"C:\Users\Rohini Parthasarathy\Desktop\ai_resuce_platform\data\images\thermal.png": {
+    "data/images/thermal.png": {
         "label": "Sentinel-3 Thermal Anomaly Image",
         "description": "Thermal infrared image showing heat anomalies across Hatay, Turkey after the February 2023 earthquake. Blue indicates cooler zones, while white/bright shows potential heat concentration.",
         "coordinates": "Approx. Lat: 36.2°N, Lon: 36.1°E"
     },
-    r"C:\Users\Rohini Parthasarathy\Desktop\ai_resuce_platform\data\images\sar_vv.png": {
+    "data/images/sar_vv.png": {
         "label": "Sentinel-1 SAR VV Image",
         "description": "Synthetic Aperture Radar (VV polarization) to detect surface displacements or structural changes. Useful in identifying collapsed zones with possible trapped victims.",
         "coordinates": "Approx. Lat: 36.2°N, Lon: 36.1°E"
     },
-    r"C:\Users\Rohini Parthasarathy\Desktop\ai_resuce_platform\data\images\sar_vh.png": {
+    "data/images/sar_vh.png": {
         "label": "Sentinel-1 SAR VH Image",
         "description": "SAR cross-polarized (VH) data enhances feature detection like disturbed debris zones, aiding post-earthquake search/rescue missions.",
         "coordinates": "Approx. Lat: 36.2°N, Lon: 36.1°E"
     }
 }
+
 
 # Paths for Hospital Finder
 GEOJSON_PATH = r"C:\Users\Rohini Parthasarathy\Desktop\ai_resuce_platform\data\damaged_roads.geojson"
