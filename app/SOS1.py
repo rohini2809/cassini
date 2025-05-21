@@ -462,89 +462,89 @@ def run_triage_dashboard():
 
     with col2:
         # ===== Zone Classification =====
-        st.subheader("🌋 Earthquake Impact Zones")
+        st.subheader("🌋 Earthquake Impact Assessment")
         
-        # ShakeMap Zones
+        # ShakeMap Zones - Replaced map with faster visualizations
         with st.expander("🔴 ShakeMap Intensity Zones", expanded=True):
             zone_df = classify_earthquake_zones(SHAKEMAP_PATH)
             if not zone_df.empty:
-                # Create a color-coded map
-                m = folium.Map(location=[zone_df['Latitude'].mean(), zone_df['Longitude'].mean()], zoom_start=8)
+                # Summary metrics with color-coded cards
+                cols = st.columns(3)
+                cols[0].metric("Total Zones", len(zone_df))
+                cols[1].metric("🔴 High Risk", zone_df[zone_df["Zone"] == "Red"].shape[0])
+                cols[2].metric("🟠 Medium Risk", zone_df[zone_df["Zone"] == "Orange"].shape[0])
                 
-                # Add zone polygons with colors
-                for _, row in zone_df.iterrows():
-                    color = {
-                        "Red": "red",
-                        "Orange": "orange",
-                        "Green": "green"
-                    }.get(row["Zone"], "gray")
-                    
-                    folium.CircleMarker(
-                        location=[row["Latitude"], row["Longitude"]],
-                        radius=5,
-                        color=color,
-                        fill=True,
-                        fill_color=color,
-                        popup=f"MMI: {row['MMI']} | Priority: {row['Priority']}"
-                    ).add_to(m)
+                # Simple bar chart of zones
+                zone_counts = zone_df["Zone"].value_counts().reindex(["Red", "Orange", "Green"], fill_value=0)
+                fig, ax = plt.subplots(figsize=(6, 2))
+                zone_counts.plot(kind='bar', color=['#ff4d4d', '#ffa64d', '#66cc66'], ax=ax)
+                ax.set_ylabel("Count")
+                ax.set_title("Zone Distribution")
+                st.pyplot(fig)
                 
-                st_folium(m, width=350, height=300)
-                
-                # Summary metrics
-                red_zones = zone_df[zone_df["Zone"] == "Red"].shape[0]
-                orange_zones = zone_df[zone_df["Zone"] == "Orange"].shape[0]
-                
-                cols = st.columns(2)
-                cols[0].metric("🔴 High Risk Zones", red_zones)
-                cols[1].metric("🟠 Medium Risk Zones", orange_zones)
-                
+                # Compact data table
                 st.dataframe(
-                    zone_df[["Zone", "MMI", "Priority", "Region"]]
-                    .sort_values("Priority")
-                    .style.applymap(lambda x: f"background-color: {x.lower()}; color: white", subset=["Zone"])
+                    zone_df[["Zone", "MMI", "Region"]]
+                    .sort_values("Zone")
+                    .style.apply(lambda x: [
+                        f"background-color: {'red' if v == 'Red' else 'orange' if v == 'Orange' else 'green'}; color: white" 
+                        for v in x], subset=["Zone"])
                 )
 
-        # Magnitude Events
-        with st.expander("📈 Earthquake Magnitude Events"):
+        # Magnitude Events - Optimized visualization
+        with st.expander("📈 Seismic Activity Timeline"):
             mag_df = classify_magnitude_events(MAG_CSV_PATH)
             if not mag_df.empty:
-                # Timeline visualization
-                fig, ax = plt.subplots(figsize=(8, 3))
-                for _, row in mag_df.iterrows():
-                    ax.scatter(
-                        row["time"], 
-                        row["mag"], 
-                        color=row["Color"], 
-                        s=row["mag"]*50,
-                        alpha=0.7
-                    )
+                # Simple scatter plot
+                fig, ax = plt.subplots(figsize=(8, 2.5))
+                colors = {'Red': '#ff4d4d', 'Orange': '#ffa64d', 'Green': '#66cc66'}
+                
+                for zone, color in colors.items():
+                    subset = mag_df[mag_df["Zone"] == zone]
+                    if not subset.empty:
+                        ax.scatter(
+                            subset["time"], 
+                            subset["mag"], 
+                            color=color, 
+                            label=zone,
+                            s=50
+                        )
+                
                 ax.set_ylabel("Magnitude")
-                ax.set_xlabel("Time")
-                ax.grid(True, alpha=0.3)
+                ax.legend(title="Risk Zone")
+                ax.grid(True, alpha=0.2)
+                st.pyplot(fig)
+                
+                # Compact table
+                st.dataframe(
+                    mag_df[["time", "mag", "Zone"]]
+                    .rename(columns={
+                        "time": "Time",
+                        "mag": "Magnitude",
+                        "Zone": "Risk"
+                    })
+                    .style.apply(lambda x: [
+                        f"background-color: {'#ff4d4d' if v == 'Red' else '#ffa64d' if v == 'Orange' else '#66cc66'}; color: white" 
+                        for v in x], subset=["Risk"])
+                )
+
+        # Elderly Population - Optimized display
+        with st.expander("👵 Vulnerable Population"):
+            elderly_df = load_elderly_data(ELDERLY_CSV_PATH)
+            if not elderly_df.empty:
+                # Top 5 high-risk regions
+                high_risk = elderly_df.nlargest(5, "Elderly_Percent")
+                fig, ax = plt.subplots(figsize=(6, 2.5))
+                high_risk.sort_values("Elderly_Percent").plot.barh(
+                    x="Region", y="Elderly_Percent", 
+                    color='#ff6961', ax=ax
+                )
+                ax.set_xlabel("Elderly Population %")
                 st.pyplot(fig)
                 
                 st.dataframe(
-                    mag_df[["time", "place", "mag", "Zone"]]
-                    .rename(columns={
-                        "time": "Time",
-                        "place": "Location",
-                        "mag": "Magnitude",
-                        "Zone": "Risk Zone"
-                    })
-                    .style.applymap(lambda x: f"background-color: {x.lower()}; color: white", subset=["Risk Zone"])
-                )
-
-        # Elderly Population
-        with st.expander("👵 Vulnerable Population Data"):
-            elderly_df = load_elderly_data(ELDERLY_CSV_PATH)
-            if not elderly_df.empty:
-                st.dataframe(
-                    elderly_df[["Region", "Elderly_Percent", "Risk_Level"]]
-                    .rename(columns={
-                        "Region": "Region",
-                        "Elderly_Percent": "Elderly %",
-                        "Risk_Level": "Risk Level"
-                    })
+                    elderly_df[["Region", "Elderly_Percent"]]
+                    .rename(columns={"Elderly_Percent": "Elderly %"})
                     .style.bar(subset=["Elderly %"], color='#ff6961')
                 )
 
