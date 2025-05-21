@@ -53,7 +53,7 @@ SENTINEL_IMAGES = {
 
 
 # Paths for Hospital Finder
-GEOJSON_PATH = r"GEOJSON_PATH = "data/damaged_roads.geojson"
+GEOJSON_PATH = r"data/damaged_roads.geojson"
 MAX_DISTANCE_KM = 300
 
 # === UTILITY FUNCTIONS ===
