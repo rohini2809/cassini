@@ -26,7 +26,7 @@ CSV_PATH = "data/hospital.csv"
 SHAKEMAP_PATH = "data/intensity_contours.json"
 MAG_CSV_PATH = "data/magnitude.csv"
 ELDERLY_CSV_PATH = "data/elderly_population.csv"
-GEOJSON_PATH = "data/damaged_roads.geojson"
+damaged_roads_path = "data/damaged_roads.geojson"
 
 SENTINEL_IMAGES = {
     "data/images/thermal.png": {
