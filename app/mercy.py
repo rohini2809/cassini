@@ -26,7 +26,7 @@ CSV_PATH = "data/hospital.csv"
 SHAKEMAP_PATH = "data/intensity_contours.json"
 MAG_CSV_PATH = "data/magnitude.csv"
 ELDERLY_CSV_PATH = "data/elderly_population.csv"
-damaged_roads_path = "data/damaged_roads.geojson"
+GEOJSON_PATH = "data/damaged_roads.geojson"
 
 SENTINEL_IMAGES = {
     "data/images/thermal.png": {
@@ -48,7 +48,7 @@ SENTINEL_IMAGES = {
 
 
 # Paths for Hospital Finder
-GEOJSON_PATH = r"C:\Users\Rohini Parthasarathy\Desktop\ai_resuce_platform\data\damaged_roads.geojson"
+GEOJSON_PATH = "data/damaged_roads.geojson"
 MAX_DISTANCE_KM = 300
 
 # === UTILITY FUNCTIONS ===
