@@ -1,5 +1,6 @@
 streamlit
 pandas
+matplotlib
 geopy
 requests
 openrouteservice
@@ -9,5 +10,4 @@ streamlit-folium
 shapely
 pillow
 numpy
-matplotlib
 skyfield
