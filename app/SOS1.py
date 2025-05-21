@@ -425,7 +425,7 @@ def run_triage_dashboard():
                     "Longitude": "lon",
                     "Hospital": "name",
                     "Beds": "beds",
-                    "Province": "province",
+                    "Region": "Region",
                     "Clinical capacity": "capacity"
                 })
                 df["category"] = df["capacity"].apply(lambda x: "Red" if x >= 3 else ("Yellow" if x == 2 else "Green"))
@@ -447,10 +447,10 @@ def run_triage_dashboard():
                     
                     st.subheader(f"🏥 Nearest {category} Zone Hospitals")
                     st.dataframe(
-                        subset[["name", "province", "beds", "distance_km"]]
+                        subset[["name", "Region", "beds", "distance_km"]]
                         .rename(columns={
                             "name": "Hospital",
-                            "province": "Province",
+                            "Region": "Region",
                             "beds": "Beds",
                             "distance_km": "Distance (km)"
                         })
@@ -561,7 +561,7 @@ def run_hospital_finder(user_location):
             "Longitude": "lon",
             "Hospital": "name",
             "Beds": "beds",
-            "Province": "province"
+            "Region": "Region"
         })
         df = df[df[['lat', 'lon']].notnull().all(axis=1)]
     except Exception as e:
