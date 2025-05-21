@@ -9,3 +9,5 @@ streamlit-folium
 shapely
 pillow
 numpy
+matplotlib
+skyfield
