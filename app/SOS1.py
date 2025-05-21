@@ -361,197 +361,188 @@ def classify_magnitude_events(csv_path):
 def run_triage_dashboard():
     st.title("🚑 OrbitResQ Triage Dashboard")
     
-    # Use columns to organize the layout
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        # ===== Triage Process =====
-        st.subheader("👨‍⚕️ Patient Triage Process")
-        if "triage_stage" not in st.session_state:
-            st.session_state.triage_stage = "start"
+    # ===== Triage Process =====
+    st.subheader("👨‍⚕️ Patient Triage Process")
+    if "triage_stage" not in st.session_state:
+        st.session_state.triage_stage = "start"
 
-        if st.session_state.triage_stage == "start":
-            if st.button("👩‍🚒 Start Triage Process", type="primary"):
-                st.session_state.triage_stage = "ask_count"
+    if st.session_state.triage_stage == "start":
+        if st.button("👩‍🚒 Start Triage Process", type="primary"):
+            st.session_state.triage_stage = "ask_count"
 
-        elif st.session_state.triage_stage == "ask_count":
-            count = st.number_input("Number of patients to triage:", min_value=1, step=1)
-            if st.button("Next"):
-                st.session_state.triage_count = count
-                st.session_state.triage_stage = "assign_status"
+    elif st.session_state.triage_stage == "ask_count":
+        count = st.number_input("Number of patients to triage:", min_value=1, step=1)
+        if st.button("Next"):
+            st.session_state.triage_count = count
+            st.session_state.triage_stage = "assign_status"
 
-        elif st.session_state.triage_stage == "assign_status":
-            st.subheader("🩺 Assign Patient Status")
-            st.session_state.statuses = []
-            for i in range(int(st.session_state.triage_count)):
-                status = st.selectbox(
-                    f"Patient {i+1} Status:",
-                    ["Red - Critical", "Yellow - Mild", "Green - Stable"],
-                    key=f"status_{i}"
-                )
-                st.session_state.statuses.append(status)
-            if st.button("Next: Enter Location"):
-                st.session_state.triage_stage = "location"
+    elif st.session_state.triage_stage == "assign_status":
+        st.subheader("🩺 Assign Patient Status")
+        st.session_state.statuses = []
+        for i in range(int(st.session_state.triage_count)):
+            status = st.selectbox(
+                f"Patient {i+1} Status:",
+                ["Red - Critical", "Yellow - Mild", "Green - Stable"],
+                key=f"status_{i}"
+            )
+            st.session_state.statuses.append(status)
+        if st.button("Next: Enter Location"):
+            st.session_state.triage_stage = "location"
 
-        elif st.session_state.triage_stage == "location":
-            st.subheader("📍 Patient Location")
-            location_mode = st.radio("Location method:", ["Use My Current Location", "Type Address"])
-            if location_mode == "Use My Current Location":
-                lat, lon, country = get_ip_location()
+    elif st.session_state.triage_stage == "location":
+        st.subheader("📍 Patient Location")
+        location_mode = st.radio("Location method:", ["Use My Current Location", "Type Address"])
+        if location_mode == "Use My Current Location":
+            lat, lon, country = get_ip_location()
+            if lat and lon:
+                st.success(f"📍 Detected: {country} ({lat:.4f}, {lon:.4f})")
+                st.session_state.user_location = (lat, lon)
+                if st.button("Find Nearest Hospitals"):
+                    st.session_state.triage_stage = "show_hospitals"
+            else:
+                st.error("Location detection failed")
+        else:
+            address = st.text_input("Enter address:")
+            if address:
+                lat, lon, city, country = get_coordinates_from_address(address)
                 if lat and lon:
-                    st.success(f"📍 Detected: {country} ({lat:.4f}, {lon:.4f})")
+                    st.success(f"📍 Located: {city}, {country} ({lat:.4f}, {lon:.4f})")
                     st.session_state.user_location = (lat, lon)
                     if st.button("Find Nearest Hospitals"):
                         st.session_state.triage_stage = "show_hospitals"
                 else:
-                    st.error("Location detection failed")
-            else:
-                address = st.text_input("Enter address:")
-                if address:
-                    lat, lon, city, country = get_coordinates_from_address(address)
-                    if lat and lon:
-                        st.success(f"📍 Located: {city}, {country} ({lat:.4f}, {lon:.4f})")
-                        st.session_state.user_location = (lat, lon)
-                        if st.button("Find Nearest Hospitals"):
-                            st.session_state.triage_stage = "show_hospitals"
-                    else:
-                        st.error("Address not found")
+                    st.error("Address not found")
 
-        elif st.session_state.triage_stage == "show_hospitals":
-            try:
-                df = pd.read_csv(CSV_PATH)
-                df = df.rename(columns={
-                    "Latitude": "lat",
-                    "Longitude": "lon",
-                    "Hospital": "name",
-                    "Beds": "beds",
-                    "Region": "Region",
-                    "Clinical capacity": "capacity"
-                })
-                df["category"] = df["capacity"].apply(lambda x: "Red" if x >= 3 else ("Yellow" if x == 2 else "Green"))
+    elif st.session_state.triage_stage == "show_hospitals":
+        try:
+            df = pd.read_csv(CSV_PATH)
+            df = df.rename(columns={
+                "Latitude": "lat",
+                "Longitude": "lon",
+                "Hospital": "name",
+                "Beds": "beds",
+                "Province": "province",
+                "Clinical capacity": "capacity"
+            })
+            df["category"] = df["capacity"].apply(lambda x: "Red" if x >= 3 else ("Yellow" if x == 2 else "Green"))
+            
+            status_mapping = {
+                "Red - Critical": "Red",
+                "Yellow - Mild": "Yellow",
+                "Green - Stable": "Green"
+            }
+            selected_categories = list({status_mapping[s] for s in st.session_state.statuses})
+            lat, lon = st.session_state.user_location
+            
+            for category in selected_categories:
+                subset = df[df["category"] == category].copy()
+                if subset.empty:
+                    continue
+                subset["distance_km"] = subset.apply(lambda row: geodesic((lat, lon), (row["lat"], row["lon"])).km, axis=1)
+                subset = subset.sort_values("distance_km").head(3)
                 
-                status_mapping = {
-                    "Red - Critical": "Red",
-                    "Yellow - Mild": "Yellow",
-                    "Green - Stable": "Green"
-                }
-                selected_categories = list({status_mapping[s] for s in st.session_state.statuses})
-                lat, lon = st.session_state.user_location
-                
-                for category in selected_categories:
-                    subset = df[df["category"] == category].copy()
-                    if subset.empty:
-                        continue
-                    subset["distance_km"] = subset.apply(lambda row: geodesic((lat, lon), (row["lat"], row["lon"])).km, axis=1)
-                    subset = subset.sort_values("distance_km").head(3)
-                    
-                    st.subheader(f"🏥 Nearest {category} Zone Hospitals")
-                    st.dataframe(
-                        subset[["name", "Region", "beds", "distance_km"]]
-                        .rename(columns={
-                            "name": "Hospital",
-                            "Region": "Region",
-                            "beds": "Beds",
-                            "distance_km": "Distance (km)"
-                        })
-                        .round(2)
-                        .style.background_gradient(subset=["Distance (km)"], cmap="Reds")
-                    )
-            except Exception as e:
-                st.error(f"Error loading hospital data: {e}")
-
-    with col2:
-        # ===== Zone Classification =====
-        st.subheader("🌋 Earthquake Impact Assessment")
-        
-        # ShakeMap Zones - Replaced map with faster visualizations
-        with st.expander("🔴 ShakeMap Intensity Zones", expanded=True):
-            zone_df = classify_earthquake_zones(SHAKEMAP_PATH)
-            if not zone_df.empty:
-                # Summary metrics with color-coded cards
-                cols = st.columns(3)
-                cols[0].metric("Total Zones", len(zone_df))
-                cols[1].metric("🔴 High Risk", zone_df[zone_df["Zone"] == "Red"].shape[0])
-                cols[2].metric("🟠 Medium Risk", zone_df[zone_df["Zone"] == "Orange"].shape[0])
-                
-                # Simple bar chart of zones
-                zone_counts = zone_df["Zone"].value_counts().reindex(["Red", "Orange", "Green"], fill_value=0)
-                fig, ax = plt.subplots(figsize=(6, 2))
-                zone_counts.plot(kind='bar', color=['#ff4d4d', '#ffa64d', '#66cc66'], ax=ax)
-                ax.set_ylabel("Count")
-                ax.set_title("Zone Distribution")
-                st.pyplot(fig)
-                
-                # Compact data table
+                st.subheader(f"🏥 Nearest {category} Zone Hospitals")
                 st.dataframe(
-                    zone_df[["Zone", "MMI", "Region"]]
-                    .sort_values("Zone")
-                    .style.apply(lambda x: [
-                        f"background-color: {'red' if v == 'Red' else 'orange' if v == 'Orange' else 'green'}; color: white" 
-                        for v in x], subset=["Zone"])
-                )
-
-        # Magnitude Events - Optimized visualization
-        with st.expander("📈 Seismic Activity Timeline"):
-            mag_df = classify_magnitude_events(MAG_CSV_PATH)
-            if not mag_df.empty:
-                # Simple scatter plot
-                fig, ax = plt.subplots(figsize=(8, 2.5))
-                colors = {'Red': '#ff4d4d', 'Orange': '#ffa64d', 'Green': '#66cc66'}
-                
-                for zone, color in colors.items():
-                    subset = mag_df[mag_df["Zone"] == zone]
-                    if not subset.empty:
-                        ax.scatter(
-                            subset["time"], 
-                            subset["mag"], 
-                            color=color, 
-                            label=zone,
-                            s=50
-                        )
-                
-                ax.set_ylabel("Magnitude")
-                ax.legend(title="Risk Zone")
-                ax.grid(True, alpha=0.2)
-                st.pyplot(fig)
-                
-                # Compact table
-                st.dataframe(
-                    mag_df[["time", "mag", "Zone"]]
+                    subset[["name", "province", "beds", "distance_km"]]
                     .rename(columns={
-                        "time": "Time",
-                        "mag": "Magnitude",
-                        "Zone": "Risk"
+                        "name": "Hospital",
+                        "province": "Province",
+                        "beds": "Beds",
+                        "distance_km": "Distance (km)"
                     })
-                    .style.apply(lambda x: [
-                        f"background-color: {'#ff4d4d' if v == 'Red' else '#ffa64d' if v == 'Orange' else '#66cc66'}; color: white" 
-                        for v in x], subset=["Risk"])
+                    .round(2)
+                    .style.background_gradient(subset=["Distance (km)"], cmap="Reds")
                 )
+        except Exception as e:
+            st.error(f"Error loading hospital data: {e}")
 
-        # Elderly Population - Optimized display
-        with st.expander("👵 Vulnerable Population"):
-            elderly_df = load_elderly_data(ELDERLY_CSV_PATH)
-            if not elderly_df.empty:
-                # Top 5 high-risk regions
-                high_risk = elderly_df.nlargest(5, "Elderly_Percent")
-                fig, ax = plt.subplots(figsize=(6, 2.5))
-                high_risk.sort_values("Elderly_Percent").plot.barh(
-                    x="Region", y="Elderly_Percent", 
-                    color='#ff6961', ax=ax
-                )
-                ax.set_xlabel("Elderly Population %")
-                st.pyplot(fig)
-                
-                st.dataframe(
-                    elderly_df[["Region", "Elderly_Percent"]]
-                    .rename(columns={"Elderly_Percent": "Elderly %"})
-                    .style.bar(subset=["Elderly %"], color='#ff6961')
-                )
+    # ===== Earthquake Zone Classification =====
+    st.header("🌋 Earthquake Impact Zones")
+    zone_df = classify_earthquake_zones(SHAKEMAP_PATH)
+    if not zone_df.empty:
+        # Summary cards
+        cols = st.columns(3)
+        cols[0].metric("Total Zones", len(zone_df))
+        cols[1].metric("🔴 High Risk", zone_df[zone_df["Zone"] == "Red"].shape[0])
+        cols[2].metric("🟠 Medium Risk", zone_df[zone_df["Zone"] == "Orange"].shape[0])
+        
+        # Zone table
+        st.dataframe(
+            zone_df[["Zone", "MMI", "Priority", "Region"]]
+            .sort_values("Priority")
+            .style.applymap(lambda x: f"background-color: {x.lower()}; color: white", subset=["Zone"])
+        )
+
+    # ===== Elderly Population =====
+    st.header("👵 Vulnerable Population Data")
+    elderly_df = load_elderly_data(ELDERLY_CSV_PATH)
+    if not elderly_df.empty:
+        # Rename Province to Region if needed
+        if "Province" in elderly_df.columns and "Region" not in elderly_df.columns:
+            elderly_df = elderly_df.rename(columns={"Province": "Region"})
+        
+        # Calculate Risk_Level if not present
+        if "Risk_Level" not in elderly_df.columns and "Elderly_Percent" in elderly_df.columns:
+            elderly_df["Risk_Level"] = elderly_df["Elderly_Percent"].apply(
+                lambda x: "High" if x > 12 else ("Medium" if x >= 10 else "Low")
+            )
+        
+        # Visualization
+        cols = st.columns(2)
+        with cols[0]:
+            st.subheader("Top High-Risk Areas")
+            high_risk = elderly_df.nlargest(5, "Elderly_Percent")
+            fig, ax = plt.subplots(figsize=(6, 3))
+            high_risk.sort_values("Elderly_Percent").plot.barh(
+                x="Region", y="Elderly_Percent", 
+                color='#ff6961', ax=ax
+            )
+            ax.set_xlabel("Elderly Population %")
+            st.pyplot(fig)
+        
+        with cols[1]:
+            st.subheader("Population Data")
+            st.dataframe(
+                elderly_df[["Region", "Elderly_Percent", "Risk_Level"]]
+                .rename(columns={"Elderly_Percent": "Elderly %"})
+                .style.apply(lambda x: [
+                    f"background-color: {'#ff4d4d' if v == 'High' else '#ffa64d' if v == 'Medium' else '#66cc66'}; color: white" 
+                    for v in x], subset=["Risk_Level"])
+                .bar(subset=["Elderly %"], color='#ff6961')
+            )
+
+    # ===== Earthquake Events =====
+    st.header("🧯 Earthquake Events")
+    mag_df = classify_magnitude_events(MAG_CSV_PATH)
+    if not mag_df.empty:
+        cols = st.columns(2)
+        with cols[0]:
+            st.subheader("Recent Activity")
+            st.dataframe(
+                mag_df[["time", "place", "mag", "Zone"]]
+                .rename(columns={
+                    "time": "Time",
+                    "place": "Location",
+                    "mag": "Magnitude",
+                    "Zone": "Risk Zone"
+                })
+                .style.applymap(lambda x: f"background-color: {x.lower()}; color: white", subset=["Risk Zone"])
+            )
+        
+        with cols[1]:
+            st.subheader("Magnitude Distribution")
+            fig, ax = plt.subplots(figsize=(6, 3))
+            mag_df["mag"].plot.hist(bins=10, color='#ffa64d', ax=ax)
+            ax.set_xlabel("Magnitude")
+            st.pyplot(fig)
 
     # ===== Victim Detection =====
-    st.subheader("🛰️ Satellite Victim Detection")
+    st.header("🛰️ Satellite Victim Detection")
     display_phase_3_victim_detection()
-
+st.write("Checking image paths:")
+for path in SENTINEL_IMAGES:
+    st.write(f"Path: {path}")
+    st.write(f"Exists: {os.path.exists(path)}")
 # === HOSPITAL FINDER FUNCTIONS ===
 def run_hospital_finder(user_location):
     try:
